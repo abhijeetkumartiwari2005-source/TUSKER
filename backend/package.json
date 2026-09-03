@@ -1,12 +1,21 @@
 {
-  "name": "backend",
+  "name": "tusker-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Bulk email campaign backend",
+  "main": "src/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "keywords": [
+    "email",
+    "campaign",
+    "api"
+  ],
+  "author": "Abhijeet Kumar Tiwari",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
