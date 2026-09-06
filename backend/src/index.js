@@ -3,6 +3,8 @@ import express from 'express';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
+import csvUploadRoutes from './routes/csvUpload.js';
+
 
 const app = express();
 
@@ -16,6 +18,8 @@ connectDB();
 app.use('/auth', authRoutes);
 
 app.use('/campaigns', campaignRoutes);
+
+app.use('/campaigns', csvUploadRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Tusker API running' });
