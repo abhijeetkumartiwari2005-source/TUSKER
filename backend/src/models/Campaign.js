@@ -33,6 +33,10 @@ const campaignSchema = new mongoose.Schema(
     sentEmails: {
       type: Number,
       default: 0
+    },
+    emails:{
+      type:string,
+      deafult:[]
     }
   },
   {

@@ -27,9 +27,10 @@ router.post('/:id/upload', authMiddleware, upload.single('file'), async (req, re
       })
       .on('end', async () => {
         campaign.csvFile = req.file.path;
+        campaign.emails = emails;
         campaign.totalEmails = emails.length;
         await campaign.save();
-        fs.unlinkSync(req.file.path);
+        // fs.unlinkSync(req.file.path); gotta save this in db
         res.status(200).json({ message: 'CSV uploaded', totalEmails: emails.length });
       });
 
