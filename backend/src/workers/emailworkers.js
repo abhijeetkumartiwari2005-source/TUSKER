@@ -1,5 +1,7 @@
 import { Worker } from 'bullmq';
 import { redisConfig, redisClient } from '../config/redis.js';
+import nodemailer from 'nodemailer';
+import Campaign from '../models/Campaign.js';
 
 const worker = new Worker('email', async (job) => {
   console.log(`Processing job ${job.id}`);
