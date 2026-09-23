@@ -1,68 +1,39 @@
-import { Worker } from 'bullmq';
-import nodemailer from 'nodemailer';
-import { redisConfig, redisClient } from '../config/redis.js';
+import express from 'express';
+import authMiddleware from '../middleware/auth.js';
 import Campaign from '../models/Campaign.js';
+import emailQueue from '../queues/emailQueues.js';
 
-// Create Mailgun transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.MAILGUN_SMTP_HOST,
-  port: process.env.MAILGUN_SMTP_PORT,
-  secure: false,  // true for 465, false for 587
-  auth: {
-    user: process.env.MAILGUN_SMTP_USER,
-    pass: process.env.MAILGUN_SMTP_PASS
+const router = express.Router();
+
+router.post('/:campaignId/send', authMiddleware, async (req, res) => {
+  try {
+    const campaignId = req.params.campaignId;
+    const campaign = await Campaign.findById(campaignId);
+
+    // Check 1: does campaign exist?
+    if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+
+    // Check 2: does it belong to this user?
+    if (campaign.userId.toString() !== req.user.userId) return res.status(403).json({ message: 'Unauthorized' });
+
+    // Check 3: is it ready to send?
+    if (!campaign.csvFile || !campaign.emailTemplate) return res.status(400).json({ message: 'Missing CSV or template' });
+
+    // Add job to queue
+    await emailQueue.add('send-email', {
+      campaignId: campaign._id,
+      emailTemplate: campaign.emailTemplate
+    });
+
+    // Update campaign status
+    campaign.status = 'queued';
+    await campaign.save();
+
+    res.json({ message: 'Emails have been sent to the queue' });
+
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-const worker = new Worker('email', async (job) => {
-  console.log(`Processing job ${job.id}`);
-  
-  const { campaignId, emailTemplate } = job.data;
-  
-  // Fetch campaign to get emails
-  const campaign = await Campaign.findById(campaignId);
-  if (!campaign) throw new Error('Campaign not found');
-  
-  const emails = campaign.emails;
-  const totalEmails = emails.length;
-  
-  for (let i = 0; i < totalEmails; i++) {
-    try {
-      // Send email via Mailgun
-      await transporter.sendMail({
-        from: process.env.MAILGUN_FROM_EMAIL,
-        to: emails[i],
-        subject: 'Your Campaign Email',
-        html: emailTemplate
-      });
-      
-      // Publish progress
-      await redisClient.publish(
-        `campaign:${campaignId}:progress`,
-        JSON.stringify({
-          campaignId,
-          sent: i + 1,
-          total: totalEmails,
-          status: 'sending'
-        })
-      );
-      
-      console.log(`Email sent to ${emails[i]} (${i + 1}/${totalEmails})`);
-      
-    } catch (error) {
-      console.error(`Failed to send to ${emails[i]}:`, error.message);
-    }
-  }
-  
-  return { success: true, sent: totalEmails };
-}, { connection: redisConfig });
-
-worker.on('completed', (job) => {
-  console.log(`Job ${job.id} completed`);
-});
-
-worker.on('failed', (job, err) => {
-  console.error(`Job ${job.id} failed:`, err.message);
-});
-
-console.log('Email worker started');
+export default router;
