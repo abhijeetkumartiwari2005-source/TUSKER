@@ -18,20 +18,36 @@ router.post('/:id/upload', authMiddleware, upload.single('file'), async (req, re
     
     if (campaign.userId.toString() !== req.user.userId) return res.status(403).json({ message: "unauthorized" });
     
-    const emails = [];
+    const validEmails = [];
+    const invalidEmails = [];
+    let rowNumber = 0;
     
     fs.createReadStream(req.file.path)
       .pipe(csv())
       .on('data', (row) => {
-        emails.push(row.email);
-      })
+        rowNumber++;
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailRegex.test(row.email)) {
+        validEmails.push(row.email);
+      } else {
+        invalidEmails.push({ row: rowNumber, email: row.email });  // Track invalid ones
+      }
+    })
       .on('end', async () => {
         campaign.csvFile = req.file.path;
-        campaign.emails = emails;
-        campaign.totalEmails = emails.length;
+        campaign.emails = validEmails;
+        campaign.totalEmails = validEmails.length;
         await campaign.save();
-        res.status(200).json({ message: 'CSV uploaded', totalEmails: emails.length });
-      });
+
+        res.status(200).json({ 
+        message: 'CSV uploaded',
+        validEmails: validEmails.length,
+        invalidEmails: invalidEmails
+        
+       });
+       }); 
+    
 
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
