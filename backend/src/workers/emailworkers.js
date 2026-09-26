@@ -1,7 +1,11 @@
 import { Worker } from 'bullmq';
 import nodemailer from 'nodemailer';
-import { redisConfig, redisClient } from '../config/redis.js';
+import { bullmqConnection, redisClient } from '../config/redis.js';
 import Campaign from '../models/Campaign.js';
+import 'dotenv/config';
+import connectDB from '../config/db.js';
+
+connectDB();
 
 // Create Mailgun transporter
 const transporter = nodemailer.createTransport({
@@ -55,7 +59,7 @@ const worker = new Worker('email', async (job) => {
   }
   
   return { success: true, sent: totalEmails };
-}, { connection: redisConfig });
+}, { connection: bullmqConnection });
 
 worker.on('completed', (job) => {
   console.log(`Job ${job.id} completed`);

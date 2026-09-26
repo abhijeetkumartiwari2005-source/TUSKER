@@ -15,7 +15,7 @@ const campaignSchema = new mongoose.Schema(
     },
     csvFile: {
       type: String,
-      required: true
+      default: ''
     },
     emailTemplate: {
       type: String,
@@ -34,10 +34,10 @@ const campaignSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-    emails:{
-      type:string,
-      deafult:[]
-    }
+    emails: {
+      type: [String],
+      default: []
+}
   },
   {
     timestamps: true

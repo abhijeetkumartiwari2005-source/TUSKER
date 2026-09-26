@@ -7,6 +7,8 @@ import { redisClient, redisConfig } from './config/redis.js';
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
 import csvUploadRoutes from './routes/csvUpload.js';
+import cors from 'cors';
+import sendCampaignRoutes from './routes/sendCampaign.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,18 +17,20 @@ const server = createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 connectDB();
 
 app.use('/auth', authRoutes);
 app.use('/campaigns', campaignRoutes);
 app.use('/campaigns', csvUploadRoutes);
+app.use('/campaigns', sendCampaignRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Tusker API running' });
@@ -50,12 +54,9 @@ io.on('connection', (socket) => {
 const subscriber = redisClient.duplicate();
 await subscriber.connect();
 
-subscriber.pSubscribe('campaign:*:progress');
-
-subscriber.on('pmessage', (pattern, channel, message) => {
+await subscriber.pSubscribe('campaign:*:progress', (message, channel) => {
   const campaignId = channel.split(':')[1];
   const progressData = JSON.parse(message);
-  
   io.to(`campaign:${campaignId}`).emit('progress', progressData);
   console.log(`[${campaignId}] Progress: ${progressData.sent}/${progressData.total}`);
 });
